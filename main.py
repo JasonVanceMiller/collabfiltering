@@ -8,7 +8,17 @@ def error(X, Y):
         for column in range(Y.shape[1]):
             if Y[row][column] <= 10:
                 out += (X[row][column] - Y[row][column]) * (X[row][column] - Y[row][column])
-    return math.sqrt(out)
+    return math.sqrt(out / (Y.shape[0] * Y.shape[1]))
+
+def unset_error(A, B, Y):
+    out = 0
+    entry_count = 0
+    for row in range(Y.shape[0]):
+        for column in range(Y.shape[1]):
+            if Y[row][column] > 10:
+                out += (A[row][column] - B[row][column]) * (A[row][column] - B[row][column])
+                entry_count += 1
+    return math.sqrt(out / entry_count)
 
 def ignore_empty_lsrl (X: np.ndarray, Y: np.ndarray, lam: float) -> np.ndarray: 
     # Because of the empty values, we have to reconstruct the matrices cell by cell, by turning a blindeye to the values 99. (or above 10)
@@ -68,28 +78,43 @@ if __name__ == '__main__':
 
     UxJ = xls_dataframe.to_numpy()
 
-    iterations = 10 
-    feature_count = 70 
 
     user_count = UxJ.shape[0]
     joke_count = UxJ.shape[1]
+
+    print(user_count)
+    print(joke_count)
     # User X Features * Features X Joke = User X Joke
     # UxF             * FxJ             = UxJ
 
+    iterations = 10
+    # feature_count = 70 
 
-    UxF = np.random.rand(user_count, feature_count)
-    FxJ = np.random.rand(feature_count, joke_count)
+    for feature_count in [2, 4, 6, 8, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]:
+        UxF = np.random.rand(user_count, feature_count)
+        FxJ = np.random.rand(feature_count, joke_count)
+        # for l in [0.0001, 0.001, 0.01, 0.1, 1]:
+        for l in [0.01]:
+            for i in range(iterations):
+                FxJ = ignore_empty_lsrl(UxF, UxJ, l)
+                UxF = ignore_empty_lsrl(FxJ.T, UxJ.T, l).T
+                # print(error(UxF @ FxJ, UxJ))
+        
+        pred1 = UxF @ FxJ
 
-    # print(UxF)
-    # print(FxJ)
 
-    # for l in [0.0001, 0.001, 0.01, 0.1, 1]:
-    for l in [0.01]:
-        for i in range(iterations):
-            FxJ = ignore_empty_lsrl(UxF, UxJ, l)
-            UxF = ignore_empty_lsrl(FxJ.T, UxJ.T, l).T
-            print(error(UxF @ FxJ, UxJ))
-
-        print(UxF @ FxJ)
-        print(UxJ)
+        UxF = np.random.rand(user_count, feature_count)
+        FxJ = np.random.rand(feature_count, joke_count)
+        # for l in [0.0001, 0.001, 0.01, 0.1, 1]:
+        for l in [0.01]:
+            for i in range(iterations):
+                FxJ = ignore_empty_lsrl(UxF, UxJ, l)
+                UxF = ignore_empty_lsrl(FxJ.T, UxJ.T, l).T
+                # print(error(UxF @ FxJ, UxJ))
+        
+        pred2 = UxF @ FxJ
+        print(f"Feature Count {feature_count}")
+        print(f"Pred1 error {error(pred1, UxJ)}")
+        print(f"Pred2 error {error(pred2, UxJ)}")
+        print(f"Unset error {unset_error(pred1, pred2, UxJ)}")
         print("")
